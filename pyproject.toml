@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "margaret"
+version = "0.1.0"
+description = "Margaret Autonomous Embodied AI Physical Agent"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mujoco>=3.15.0",
+    "mujoco-menagerie>=2026.10.0",
+    "pydantic>=2.13.5",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "ultralytics>=8.0.0",
+    "opencv-python>=4.8.0",
+    "pillow>=10.0.0",
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0",
+]
+
+[project.scripts]
+margaret = "agent.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent", "arena", "robots", "skills"]

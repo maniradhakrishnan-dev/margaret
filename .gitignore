@@ -1,0 +1,51 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+wheels/
+*.egg-info/
+.eggs/
+
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+
+# Secrets and environment variables
+.env
+.env.*
+!.env.example
+
+# Model weights and checkpoints (downloaded on demand)
+weights/
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.bin
+yolov8s-world.pt
+
+# MuJoCo runtime & simulator logs
+MUJOCO_LOG.TXT
+*.log
+
+# Procedural / runtime generated arena definitions
+models/menagerie/**/runtime_*.xml
+models/menagerie/**/test_*.xml
+models/menagerie/**/procedural_arena.xml
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor / OS files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
