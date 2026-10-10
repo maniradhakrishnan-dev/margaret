@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "margaret"
 version = "0.1.0"
-description = "Margaret Autonomous Embodied AI Physical Agent"
+description = "Margaret: Embodiment-Agnostic Physical AI Agentic System"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

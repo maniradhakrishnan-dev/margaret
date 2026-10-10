@@ -1,6 +1,6 @@
-# 🤖 Autonomous Physical AI Humanoid Robot Platform
+# 🤖 Margaret: Embodiment-Agnostic Physical AI Agentic System
 
-An end-to-end, agent-driven humanoid robotics platform combining **Agentic Cognitive AI**, **Frontier Models (Gemini)**, **Pre-Simulation World Models**, **Multi-Robot MuJoCo Menagerie**, **Jacobian Kinematics**, **Spatial Vision**, and **ROS 2 Jazzy**.
+An end-to-end, embodiment-agnostic physical AI platform combining **Agentic Cognitive AI**, **Frontier Models (Gemini)**, **Pre-Simulation World Models**, **Multi-Robot MuJoCo Menagerie**, **Jacobian Kinematics**, **Continuous Visual Servoing**, and **ROS 2 Jazzy**.
 
 Built entirely from scratch in clean, transparent Python — strictly **without** bloated third-party agent frameworks.
 

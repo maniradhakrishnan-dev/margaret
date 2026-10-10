@@ -30,12 +30,12 @@ from agent.brain import AgentBrain
 from ros2_bridge import HumanoidRosBridge
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Autonomous Physical AI Humanoid Agent")
+    parser = argparse.ArgumentParser(description="Margaret: Embodiment-Agnostic Physical AI Agentic System")
     parser.add_argument(
         "--robot",
         type=str,
         default="unitree_g1",
-        help="Robot platform: 'unitree_g1' (MuJoCo Menagerie Flagship) or 'default' (27-DoF Test Rig)",
+        help="Robot platform: 'unitree_g1' (MuJoCo Menagerie Humanoid), 'aloha' (Bimanual Desktop Rig), or 'default'",
     )
     parser.add_argument(
         "--mission",

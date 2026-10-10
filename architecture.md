@@ -1,4 +1,4 @@
-# Margaret: Full-Stack Autonomous Embodied Physical AI Architecture
+# Margaret: Embodiment-Agnostic Physical AI Agentic Architecture
 
 ```
                                   +-------------------------------------------------------------+
