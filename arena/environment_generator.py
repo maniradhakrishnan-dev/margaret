@@ -78,7 +78,16 @@ class ProceduralEnvironment:
             left_hand_link = "left/gripper_link"
             table_height = 0.0
             table_x = 0.0
-            floor_pos = "0 0 -0.75"
+        elif self.robot_platform in ["limx_tron1", "tron1", "wheeled_biped"]:
+            target_dir = os.path.abspath("models/menagerie/limx_tron1")
+            include_line = '<include file="tron1.xml"/>'
+            head_cam_line = ''
+            pelvis_ground = '<weld name="ground_base" body1="base_Link"/>'
+            right_hand_link = "wheel_R_Link"
+            left_hand_link = "wheel_L_Link"
+            table_height = 0.50
+            table_x = 0.42
+            floor_pos = "0 0 0"
         else:
             raise ValueError(f"Unknown robot platform: {self.robot_platform}")
 

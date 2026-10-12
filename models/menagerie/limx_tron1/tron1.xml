@@ -37,7 +37,7 @@
       <freejoint name="root"/>
       <site name="imu" pos="0 0 0"/>
       <!-- Active Head Camera for Visual Servoing / Scene Inspection -->
-      <camera name="head_cam" pos="0.18 0 -0.05" mode="fixed" quat="0.6532815 0.6532815 0.2705981 0.2705981" fovy="62"/>
+      <camera name="head_cam" pos="0.25 0 0.08" xyaxes="0 -1 0 0.707 0 0.707" fovy="68"/>
       <geom class="visual" material="chassis_black" mesh="base_Link"/>
       <geom class="collision" name="base_collision" size="0.135 0.13 0.095" pos="0.03 0 -0.072" type="box"/>
 

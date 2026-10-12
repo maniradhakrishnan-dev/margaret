@@ -110,7 +110,7 @@ class MargaretAgent:
         print(f"   • Robot model initialized with {self.model.nu} actuators ({len(self.robot.arm_joint_names)} arm DoFs).")
 
         # Stage 3: Load Vision System
-        cam_name = "head_cam" if self.robot_name == "unitree_g1" else "overhead_cam"
+        cam_name = "head_cam" if self.robot_name in ["unitree_g1", "limx_tron1", "tron1", "wheeled_biped"] else "overhead_cam"
         print(f"\n👁️ [Stage 3/5] Loading Vision System (Camera: {cam_name})...")
         self.vision = SpatialVision(self.model, self.data, camera_name=cam_name, lock=self.physics_lock, table_surface_z=self.robot.table_surface_z)
         if self.use_yolo:
@@ -737,8 +737,9 @@ class MargaretAgent:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Margaret Embodied AI Autonomous Agent")
-    parser.add_argument("--robot", type=str, default="unitree_g1", choices=["unitree_g1", "aloha"], help="Robot embodiment")
+    parser.add_argument("--robot", type=str, default="unitree_g1", choices=["unitree_g1", "aloha", "limx_tron1", "tron1", "wheeled_biped"], help="Robot embodiment")
     parser.add_argument("--aloha", action="store_true", default=False, help="Shorthand for --robot aloha (desktop bimanual ViperX dual-arm embodiment)")
+    parser.add_argument("--tron1", action="store_true", default=False, help="Shorthand for --robot tron1 (LimX Dynamics TRON 1 biped-wheeled robot)")
     parser.add_argument("--objects", type=int, default=3, help="Number of procedural objects")
     parser.add_argument("--mission", type=str, default=None, help="Optional initial mission on launch")
     parser.add_argument("--no-yolo", dest="yolo", action="store_false", default=True, help="Disable local YOLO-World vision model (enabled by default)")
@@ -746,6 +747,8 @@ def parse_args():
     args = parser.parse_args()
     if args.aloha:
         args.robot = "aloha"
+    if args.tron1:
+        args.robot = "limx_tron1"
     return args
 
 

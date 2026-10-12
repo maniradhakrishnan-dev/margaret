@@ -31,8 +31,9 @@ from agent.embodied_agent import MargaretAgent
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Margaret Autonomous Embodied AI Agent")
-    parser.add_argument("--robot", type=str, default="unitree_g1", choices=["unitree_g1", "aloha"], help="Robot embodiment")
+    parser.add_argument("--robot", type=str, default="unitree_g1", choices=["unitree_g1", "aloha", "limx_tron1", "tron1", "wheeled_biped"], help="Robot embodiment")
     parser.add_argument("--aloha", action="store_true", default=False, help="Shorthand for --robot aloha (desktop bimanual ViperX dual-arm embodiment)")
+    parser.add_argument("--tron1", action="store_true", default=False, help="Shorthand for --robot tron1 (LimX Dynamics TRON 1 biped-wheeled robot)")
     parser.add_argument("--objects", type=int, default=3, help="Number of procedural objects")
     parser.add_argument("--furniture", type=str, default="workbench", choices=["workbench", "shelf_table", "dual_table"], help="Furniture layout")
     parser.add_argument("--obstacle", type=str, default="none", choices=["none", "barrier", "divider"], help="Obstacle type")
@@ -42,6 +43,8 @@ def parse_args():
     args = parser.parse_args()
     if args.aloha:
         args.robot = "aloha"
+    if args.tron1:
+        args.robot = "limx_tron1"
     return args
 
 
