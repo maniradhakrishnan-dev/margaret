@@ -14,8 +14,21 @@ class SubGoal(BaseModel):
     arm: Literal["right", "left", "auto"] = Field(
         default="auto", description="Arm selected based on workspace Y boundary (right <= 0.04, left > 0.04)"
     )
-    action: Literal["inspect", "reach", "grasp", "lift", "place", "release", "recover", "complete"] = Field(
-        description="Physical skill action category"
+    action: Literal[
+        "inspect",
+        "reach",
+        "grasp",
+        "lift",
+        "place",
+        "release",
+        "recover",
+        "navigate",
+        "steer",
+        "climb",
+        "drive",
+        "complete",
+    ] = Field(
+        description="Physical skill action category (manipulation or mobile locomotion)"
     )
     target_object: Optional[str] = Field(default=None, description="Target object identifier")
     destination_object: Optional[str] = Field(default=None, description="Placement destination if applicable")
@@ -26,13 +39,21 @@ class TaskDecompositionPlan(BaseModel):
         description="Detailed physical, geometric, and semantic analysis of the user instruction"
     )
     goal_type: Literal[
-        "PICK_AND_PLACE", "PICK_AND_LIFT", "RELEASE", "INSPECT", "REORIENT", "COMPLEX"
-    ] = Field(description="High-level manipulation category")
+        "PICK_AND_PLACE",
+        "PICK_AND_LIFT",
+        "RELEASE",
+        "INSPECT",
+        "REORIENT",
+        "NAVIGATE",
+        "TERRAIN_TRAVERSAL",
+        "OBSTACLE_AVOIDANCE",
+        "COMPLEX",
+    ] = Field(description="High-level mission category (manipulation, navigation, or terrain traversal)")
     target_object: Optional[str] = Field(
-        default=None, description="Primary object identifier to manipulate grounded from the scene"
+        default=None, description="Primary object identifier to manipulate or navigate toward"
     )
     destination_object: Optional[str] = Field(
-        default=None, description="Destination target object identifier if placing"
+        default=None, description="Destination target object identifier if placing or navigating"
     )
     sub_goals: List[SubGoal] = Field(
         description="Ordered sequence of physical sub-goals to accomplish the mission"
@@ -52,6 +73,11 @@ class ActionDecision(BaseModel):
         "release_object",
         "return_to_rest",
         "recover_floor_object",
+        "move_forward",
+        "turn_heading",
+        "drive",
+        "steer_around_obstacle",
+        "climb_ramp",
         "mission_complete",
         "abort",
     ] = Field(description="Name of the physical tool / skill to actuate")
@@ -68,13 +94,28 @@ class ActionDecision(BaseModel):
         default=None, description="Target Z coordinate in world frame (meters)"
     )
     object_name: Optional[str] = Field(
-        default=None, description="Target object identifier to manipulate"
+        default=None, description="Target object identifier to manipulate or steer around"
     )
     dest_object: Optional[str] = Field(
         default=None, description="Destination object identifier for placement"
     )
     lift_height: Optional[float] = Field(
         default=0.15, description="Height in meters to lift arm above current position"
+    )
+    distance: Optional[float] = Field(
+        default=1.0, description="Distance in meters to drive forward"
+    )
+    angle_deg: Optional[float] = Field(
+        default=0.0, description="Angle in degrees to turn (positive left, negative right)"
+    )
+    direction: Optional[str] = Field(
+        default="left", description="Steering bypass direction: 'left' or 'right'"
+    )
+    speed: Optional[float] = Field(
+        default=0.6, description="Drive speed in m/s"
+    )
+    duration_s: Optional[float] = Field(
+        default=1.0, description="Duration in seconds for drive action"
     )
 
 

@@ -140,6 +140,8 @@ class MargaretAgent:
         # Settle robot into stable posture (100 steps)
         with self.physics_lock:
             for _ in range(100):
+                if hasattr(self.robot, "apply_balance_stabilization"):
+                    self.robot.apply_balance_stabilization(self.model, self.data)
                 mujoco.mj_step(self.model, self.data)
 
         print("\n✅ [AGENT READY]: Margaret fully booted standing at plain workbench.")
@@ -262,7 +264,7 @@ class MargaretAgent:
             return {"success": False, "error": "No navigation controller configured"}
 
         @self.tool_registry.register(name="steer_around_obstacle", description="Steers around an obstacle corridor on the left or right and realigns forward heading.")
-        def tool_steer_around_obstacle(direction: str = "left"):
+        def tool_steer_around_obstacle(direction: str = "left", object_name: str = None):
             if self.nav_ctrl:
                 return self.nav_ctrl.steer_around_obstacle(direction=direction)
             return {"success": False, "error": "No navigation controller configured"}
@@ -789,6 +791,8 @@ class MargaretAgent:
                         viewer.set_texts([(mujoco.mjtFontScale.mjFONTSCALE_150, mujoco.mjtGridPos.mjGRID_TOPLEFT, hud_col1, hud_col2)])
 
                     for _ in range(steps_per_frame):
+                        if hasattr(self.robot, "apply_balance_stabilization"):
+                            self.robot.apply_balance_stabilization(self.model, self.data)
                         mujoco.mj_step(self.model, self.data)
 
                     viewer.sync()

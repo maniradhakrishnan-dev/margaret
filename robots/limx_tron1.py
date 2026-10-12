@@ -101,7 +101,7 @@ class Tron1Robot(BaseRobot):
 
     @property
     def shoulder_pos(self) -> list:
-        return [0.0, 0.0, 0.65]
+        return [0.0, 0.0, 0.90]
 
     @property
     def max_reach_m(self) -> float:
@@ -114,6 +114,25 @@ class Tron1Robot(BaseRobot):
     @property
     def floor_threshold_z(self) -> float:
         return -0.10
+
+    def apply_balance_stabilization(self, model: mujoco.MjModel, data: mujoco.MjData) -> None:
+        """
+        Active pitch & roll stabilization for wheeled-biped dynamic locomotion.
+        Stabilizes base pitch and roll to keep TRON 1 upright on its wheels
+        while allowing completely free planar driving (X, Y) and steering (Yaw).
+        """
+        base_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "base_Link")
+        if base_id == -1:
+            return
+        mat = data.xmat[base_id].reshape(3, 3)
+        import math
+        pitch = math.atan2(-mat[2, 0], math.sqrt(mat[2, 1]**2 + mat[2, 2]**2))
+        roll = math.atan2(mat[2, 1], mat[2, 2])
+        w = data.cvel[base_id][:3]  # angular velocity [wx, wy, wz]
+
+        data.xfrc_applied[base_id, 3] = -150.0 * roll - 20.0 * w[0]
+        data.xfrc_applied[base_id, 4] = -250.0 * pitch - 35.0 * w[1]
+        data.xfrc_applied[base_id, 5] = 0.0
 
     def compute_differential_drive(self, linear_vel: float, angular_vel: float) -> Tuple[float, float]:
         """
@@ -148,7 +167,15 @@ class Tron1Robot(BaseRobot):
     def get_prompt_embodiment_description(self) -> str:
         return (
             f"Robot Platform: LimX Dynamics TRON 1 (Wheeled-Biped Hybrid).\n"
-            f"- Kinematics: 6-DoF articulated legs + 2-DoF continuous differential drive wheels.\n"
-            f"- Locomotion: High-speed planar wheel drive with active leg height/balance articulation.\n"
-            f"- Sensors: Head inspection camera, 6-axis base IMU."
+            f"- Locomotion Capabilities: High-speed differential drive wheels forward/backward, turning, obstacle bypass steering, and ramp climbing.\n"
+            f"- Available Physical Actions:\n"
+            f"  * inspect_scene: Scans the obstacle course with head camera to ground all obstacle and waypoint positions.\n"
+            f"  * steer_around_obstacle: Steers laterally around an obstacle (direction='left' or 'right', object_name='obstacle_box_red').\n"
+            f"  * move_forward: Propels robot forward across terrain by distance in meters (e.g. distance=1.5, speed=0.6).\n"
+            f"  * turn_heading: Rotates robot in place by angle in degrees (e.g. angle_deg=30.0; positive is left, negative is right).\n"
+            f"  * climb_ramp: Traverses incline ramp with active wheel propulsion (speed=0.8, duration_s=2.0).\n"
+            f"  * drive: Commanded linear speed and yaw rate.\n"
+            f"- Grounded Navigation Environment: Course has hazard boxes, barriers, incline ramp, and goal beacon."
         )
+
+

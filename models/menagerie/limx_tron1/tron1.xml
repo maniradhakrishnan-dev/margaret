@@ -126,7 +126,8 @@
   </sensor>
 
   <keyframe>
-    <!-- Standing balanced pose with knees articulated and wheels planted -->
-    <key name="stand" qpos="0 0 0.65 1 0 0 0 0.0 0.35 -0.65 0.0 0.0 -0.35 0.65 0.0" ctrl="0.0 0.35 -0.65 0.0 -0.35 0.65 0.0 0.0"/>
+    <!-- Standing balanced upright pose with wheels planted on the ground -->
+    <key name="stand" qpos="0 0 0.907 1 0 0 0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0" ctrl="0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0"/>
   </keyframe>
+
 </mujoco>

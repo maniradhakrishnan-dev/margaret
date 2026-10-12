@@ -61,22 +61,28 @@ class MobileNavigationController:
         linear_vel: float,
         angular_vel: float,
         duration_s: float = 0.5,
-        steps: int = 50,
+        steps: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Dispatches differential drive wheel speeds and advances the physical simulation.
         Positive linear_vel moves forward. Positive angular_vel turns counter-clockwise (left).
         """
         start_pose = self.get_robot_pose()
-        dt_substep = duration_s / max(1, steps)
+        if steps is None:
+            timestep = max(0.0005, getattr(self.model.opt, "timestep", 0.002))
+            steps = max(10, int(duration_s / timestep))
 
         for step in range(steps):
             if self.lock:
                 with self.lock:
+                    if hasattr(self.robot, "apply_balance_stabilization"):
+                        self.robot.apply_balance_stabilization(self.model, self.data)
                     if hasattr(self.robot, "apply_wheel_velocities"):
                         self.robot.apply_wheel_velocities(self.model, self.data, linear_vel, angular_vel)
                     mujoco.mj_step(self.model, self.data)
             else:
+                if hasattr(self.robot, "apply_balance_stabilization"):
+                    self.robot.apply_balance_stabilization(self.model, self.data)
                 if hasattr(self.robot, "apply_wheel_velocities"):
                     self.robot.apply_wheel_velocities(self.model, self.data, linear_vel, angular_vel)
                 mujoco.mj_step(self.model, self.data)
@@ -88,13 +94,18 @@ class MobileNavigationController:
                     self.data.ctrl[self.act_l_id] = 0.0
                 if self.act_r_id != -1:
                     self.data.ctrl[self.act_r_id] = 0.0
+                if hasattr(self.robot, "apply_balance_stabilization"):
+                    self.robot.apply_balance_stabilization(self.model, self.data)
                 mujoco.mj_step(self.model, self.data)
         else:
             if self.act_l_id != -1:
                 self.data.ctrl[self.act_l_id] = 0.0
             if self.act_r_id != -1:
                 self.data.ctrl[self.act_r_id] = 0.0
+            if hasattr(self.robot, "apply_balance_stabilization"):
+                self.robot.apply_balance_stabilization(self.model, self.data)
             mujoco.mj_step(self.model, self.data)
+
 
         end_pose = self.get_robot_pose()
         delta_dist = math.hypot(
@@ -156,4 +167,5 @@ class MobileNavigationController:
     def climb_ramp(self, speed: float = 0.8, duration_s: float = 2.0) -> Dict[str, Any]:
         """Drives up or across an incline ramp with positive wheel propulsion."""
         print(f"⛰️ [TRON 1 Terrain]: Climbing incline ramp at {speed} m/s...")
-        return self.drive(linear_vel=speed, angular_vel=0.0, duration_s=duration_s, steps=80)
+        return self.drive(linear_vel=speed, angular_vel=0.0, duration_s=duration_s)
+

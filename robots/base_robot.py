@@ -101,6 +101,10 @@ class BaseRobot(ABC):
         """Control value to actuate fingers into firmly closed state."""
         return -1.1 if hand.lower() == "left" else 1.1
 
+    def apply_balance_stabilization(self, model: mujoco.MjModel, data: mujoco.MjData) -> None:
+        """Optional dynamic balance hook for balancing embodiments (e.g. wheeled bipeds)."""
+        pass
+
     def setup_data(self, model: mujoco.MjModel, data: mujoco.MjData) -> None:
         """Custom initialization hook (e.g., applying keyframe)."""
         if self.keyframe_name:
@@ -110,3 +114,4 @@ class BaseRobot(ABC):
                 if model.key_ctrl is not None and len(model.key_ctrl[kf_id]) == model.nu:
                     data.ctrl[:] = model.key_ctrl[kf_id]
                 mujoco.mj_forward(model, data)
+

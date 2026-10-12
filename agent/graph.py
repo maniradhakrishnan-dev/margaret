@@ -209,6 +209,15 @@ EMBODIMENT STATE AWARENESS & HANDOVER CONFIRMATION:
 - If an arm is ALREADY HOLDING the requested object, do NOT plan reaching and grasping it again! Directly plan transporting, placing, or releasing it.
 - If the user commands a handover (e.g. "take completely to left hand") or asserts that an object is still in one hand:
   Plan a physical motion: retract the releasing arm away or lift the recipient hand higher to clearly demonstrate that the object is held completely and securely!
+
+LOCOMOTION & TERRAIN NAVIGATION DECOMPOSITION:
+- For Mobile & Wheeled-Biped Embodiments (e.g. LimX TRON 1) or navigation tasks (e.g. "steer around obstacle", "move forward", "navigate to goal", "climb ramp", "traverse obstacle course"):
+  - Goal types include: 'NAVIGATE', 'OBSTACLE_AVOIDANCE', 'TERRAIN_TRAVERSAL', 'INSPECT'.
+  - Sub-goal actions include: 'inspect', 'navigate', 'steer', 'drive', 'climb', 'complete'.
+  - When asked to steer around an obstacle (e.g. "steer around the red box"):
+    1. First inspect the scene if needed (action='inspect', description='Perceive obstacle locations and corridor').
+    2. Steer around the designated obstacle (action='steer', target_object=obstacle_name, description='Steer around the obstacle box to clear path').
+    3. Complete mission (action='complete', description='Obstacle safely cleared').
 - Decompose the mission into an ordered sequence of physical sub-goals."""
 
         known_objects = {}
@@ -324,7 +333,13 @@ Strict Physical Preconditions & Rules:
    - If the previous action failed (e.g. reach error too large, grasp slipped, or dropped on floor): analyze the error, adjust coordinates or parameters, and TRY AGAIN!
 7. Returning Arms to Rest / Neutral Pose:
    - If user asks to return to rest, lower arms, or reset pose, call 'return_to_rest' (arm='both' or 'right'/'left').
-8. When all sub-goals are physically accomplished and verified in the world, call 'mission_complete'.
+8. Mobile Locomotion & Obstacle Traversal (for Mobile Embodiments / TRON 1):
+   - To clear or navigate around an obstacle: call 'steer_around_obstacle' (direction='left' or 'right', object_name=obstacle_name).
+   - To drive forward along a path: call 'move_forward' (distance in meters, speed in m/s).
+   - To turn or adjust heading: call 'turn_heading' (angle_deg in degrees, positive=left, negative=right).
+   - To traverse an incline ramp: call 'climb_ramp' (speed in m/s, duration_s in seconds).
+   - Large obstacle boxes on the floor are obstacles to steer around, NOT objects to reach and pick up!
+9. When all sub-goals are physically accomplished and verified in the world, call 'mission_complete'.
 
 Output strictly according to ActionDecision schema."""
 
@@ -407,6 +422,9 @@ Determine the next precise physical action."""
         Evaluates reachability, collisions, and slip before sending commands to physical motors.
         """
         if not self.world_model:
+            return {"recommendation": "EXECUTE"}
+
+        if decision.action in ["move_forward", "turn_heading", "drive", "steer_around_obstacle", "climb_ramp", "inspect_scene", "return_to_rest"]:
             return {"recommendation": "EXECUTE"}
 
         act_arm = decision.arm if decision.arm in ["right", "left"] else "right"
@@ -567,6 +585,31 @@ Determine the next precise physical action."""
                 }
             elif decision.action == "inspect_scene":
                 args = {}
+            elif decision.action == "move_forward":
+                args = {
+                    "distance": decision.distance if decision.distance is not None else 1.0,
+                    "speed": decision.speed if decision.speed is not None else 0.6,
+                }
+            elif decision.action == "turn_heading":
+                args = {
+                    "angle_deg": decision.angle_deg if decision.angle_deg is not None else 30.0,
+                }
+            elif decision.action == "drive":
+                args = {
+                    "linear_vel": decision.speed if decision.speed is not None else 0.5,
+                    "angular_vel": 0.0,
+                    "duration_s": 1.0,
+                }
+            elif decision.action == "steer_around_obstacle":
+                args = {
+                    "direction": decision.direction or "left",
+                    "object_name": decision.object_name or (self.decomposition_plan.target_object if self.decomposition_plan else "obstacle"),
+                }
+            elif decision.action == "climb_ramp":
+                args = {
+                    "speed": decision.speed if decision.speed is not None else 0.8,
+                    "duration_s": 2.0,
+                }
 
             print(f"⚡ Action:  {decision.action}({args})")
 
@@ -609,6 +652,10 @@ Determine the next precise physical action."""
                     rec_obj = obs.get("object")
                     if rec_obj and "position" in obs:
                         self.memory.update_object(rec_obj, obs["position"], metadata={"status": "on_table"})
+                elif "final_position" in obs:
+                    self.memory.robot_state["base_pos"] = obs["final_position"]
+                elif "current_position" in obs:
+                    self.memory.robot_state["base_pos"] = obs["current_position"]
 
             # Observation Node: Record episodic feedback for closed-loop ReAct
             self.history.record_step(decision.thought, decision.action, args, obs)
