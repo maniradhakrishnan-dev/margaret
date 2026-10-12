@@ -51,7 +51,7 @@ class LiveEmbodiedGraph:
         self.world_model = world_model or WorldModel()
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-        self.fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.0-flash")
+        self.fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash-lite")
 
         # Current Graph State
         self.current_goal: str = ""
@@ -157,12 +157,12 @@ class LiveEmbodiedGraph:
             err_str = str(e)
             if "429" in err_str or "Too Many Requests" in err_str:
                 print(f"⚠️ [Embodied Model Rate Limit with {target_model}]: HTTP 429. Seamlessly switching to {self.fallback_model}...")
+                time.sleep(1.2)
             else:
                 print(f"⚠️ [Embodied Model Error with {target_model}]: {e}")
 
-            # Fallback to fast model if primary model encounters transient rate limit or timeout
+            # Fallback to fast lite model if primary model encounters transient rate limit or timeout
             if target_model != self.fallback_model:
-                time.sleep(0.4)
                 return self._call_gemini_pydantic(
                     prompt, system_instruction, response_schema, model_name=self.fallback_model
                 )
