@@ -101,7 +101,7 @@ uv sync
 ```
 
 ### 3. Configure Environment Variables (Optional)
-Margaret supports Google DeepMind Frontier reasoning models (`gemini-robotics-er-2-preview` and `gemini-3.1-flash-lite`), while seamlessly falling back to local deterministic heuristic reasoning if no key is configured:
+Margaret supports Google DeepMind Frontier reasoning models (`gemini-2.5-flash` and `gemini-2.0-flash`), while seamlessly falling back to local deterministic heuristic reasoning if no key is configured:
 ```bash
 cp .env.example .env
 # Open .env and add your GEMINI_API_KEY (optional)

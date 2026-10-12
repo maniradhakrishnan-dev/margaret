@@ -103,6 +103,38 @@ class TestTron1Embodiment(unittest.TestCase):
         self.assertIn("LimX Dynamics TRON 1", desc)
         self.assertIn("differential drive wheels", desc)
 
+    def test_obstacle_course_terrain_elements(self):
+        """Verify ramp, boxes, and goal beacon exist in obstacle_course.xml."""
+        for body_name in ["obstacle_box_1", "obstacle_box_2", "obstacle_barrier", "ramp_up", "ramp_deck", "ramp_down", "goal_beacon"]:
+            bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, body_name)
+            self.assertGreaterEqual(bid, 0, f"Course element {body_name} not found in model")
+
+    def test_mobile_navigation_controller(self):
+        """Test closed-loop navigation commands on TRON 1."""
+        from skills.navigation import MobileNavigationController
+        nav = MobileNavigationController(self.model, self.data, robot=self.robot)
+
+        pose0 = nav.get_robot_pose()
+        self.assertIn("position", pose0)
+        self.assertIn("yaw", pose0)
+
+        # Move forward
+        res_move = nav.move_forward(distance=0.3, speed=0.5)
+        self.assertTrue(res_move["success"])
+        self.assertGreater(res_move["distance_traveled_m"], 0.0)
+
+        # Turn
+        res_turn = nav.turn(angle_deg=15.0)
+        self.assertTrue(res_turn["success"])
+
+        # Steer around
+        res_steer = nav.steer_around_obstacle(direction="left")
+        self.assertTrue(res_steer["success"])
+
+        # Climb ramp
+        res_ramp = nav.climb_ramp(speed=0.6, duration_s=0.5)
+        self.assertTrue(res_ramp["success"])
+
 
 if __name__ == "__main__":
     unittest.main()

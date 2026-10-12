@@ -70,8 +70,8 @@ class AdaptiveEmbodiedHarness:
         self.model_physics = model_physics
         self.data_physics = data_physics
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model = model or os.getenv("GEMINI_MODEL", "gemini-robotics-er-2-preview")
-        self.fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-3.1-flash-lite")
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        self.fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.0-flash")
 
         # Asynchronous event stream queue
         self._event_queue: List[EventNotification] = []

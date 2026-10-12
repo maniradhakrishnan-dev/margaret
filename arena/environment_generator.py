@@ -80,14 +80,8 @@ class ProceduralEnvironment:
             table_x = 0.0
         elif self.robot_platform in ["limx_tron1", "tron1", "wheeled_biped"]:
             target_dir = os.path.abspath("models/menagerie/limx_tron1")
-            include_line = '<include file="tron1.xml"/>'
-            head_cam_line = ''
-            pelvis_ground = '<weld name="ground_base" body1="base_Link"/>'
-            right_hand_link = "wheel_R_Link"
-            left_hand_link = "wheel_L_Link"
-            table_height = 0.50
-            table_x = 0.42
-            floor_pos = "0 0 0"
+            os.makedirs(target_dir, exist_ok=True)
+            return self._generate_tron1_obstacle_course(target_dir, output_filename, num_objects)
         else:
             raise ValueError(f"Unknown robot platform: {self.robot_platform}")
 
@@ -278,5 +272,117 @@ class ProceduralEnvironment:
 
         with open(xml_path, "w", encoding="utf-8") as f:
             f.write(full_xml)
+
+        return xml_path, spawned_meta
+
+    def _generate_tron1_obstacle_course(
+        self,
+        target_dir: str,
+        output_filename: str = "runtime_interactive_arena.xml",
+        num_objects: int = 3,
+    ) -> Tuple[str, List[Dict[str, Any]]]:
+        """
+        Generates the specialized TRON 1 Mobile Agility & Obstacle Course.
+        Includes:
+        - Slalom hazard boxes and obstacle barriers at varied lateral offsets
+        - Inclined ramp, elevated deck platform, and descent ramp
+        - Glowing goal waypoint marker at finish line
+        - High-friction asphalt groundplane with curb guard rails
+        """
+        xml_path = os.path.join(target_dir, output_filename)
+
+        obs_x1 = round(float(self.rng.uniform(1.15, 1.35)), 2)
+        obs_y1 = round(float(self.rng.uniform(0.35, 0.48)), 2)
+
+        obs_x2 = round(float(self.rng.uniform(1.85, 2.05)), 2)
+        obs_y2 = round(float(self.rng.uniform(-0.48, -0.35)), 2)
+
+        obs_x3 = round(float(self.rng.uniform(2.65, 2.85)), 2)
+        obs_y3 = round(float(self.rng.uniform(-0.05, 0.12)), 2)
+
+        spawned_meta = [
+            {"name": "obstacle_box_red", "shape": "box", "color": "red", "initial_pos": [obs_x1, obs_y1, 0.15], "mass": 10.0},
+            {"name": "obstacle_box_blue", "shape": "box", "color": "blue", "initial_pos": [obs_x2, obs_y2, 0.18], "mass": 12.0},
+            {"name": "obstacle_barrier_yellow", "shape": "barrier", "color": "yellow", "initial_pos": [obs_x3, obs_y3, 0.12], "mass": 15.0},
+            {"name": "ramp_incline", "shape": "ramp", "color": "gray", "initial_pos": [3.7, 0.0, 0.11], "mass": 50.0},
+            {"name": "goal_beacon", "shape": "cylinder", "color": "green", "initial_pos": [7.3, 0.0, 0.25], "mass": 1.0},
+        ]
+
+        course_xml = f"""<mujoco model="tron1_procedural_obstacle_course">
+  <include file="tron1.xml"/>
+
+  <visual>
+    <headlight diffuse="0.75 0.75 0.75" ambient="0.25 0.25 0.25" specular="0.4 0.4 0.4"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-25"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.18 0.22 0.26" rgb2="0.14 0.17 0.20"
+      markrgb="0.6 0.6 0.6" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="12 12" reflectance="0.15"/>
+
+    <material name="hazard_yellow" rgba="0.95 0.80 0.10 1" specular="0.6" roughness="0.4"/>
+    <material name="hazard_red"    rgba="0.90 0.18 0.15 1" specular="0.5" roughness="0.4"/>
+    <material name="hazard_blue"   rgba="0.15 0.45 0.90 1" specular="0.5" roughness="0.4"/>
+    <material name="ramp_mat"      rgba="0.40 0.43 0.48 1" specular="0.4" roughness="0.6"/>
+    <material name="platform_mat"  rgba="0.30 0.33 0.38 1" specular="0.4" roughness="0.6"/>
+    <material name="goal_green"    rgba="0.10 0.85 0.30 0.9" specular="0.8" emission="0.3"/>
+    <material name="curb_mat"      rgba="0.22 0.22 0.24 1" specular="0.2"/>
+  </asset>
+
+  <worldbody>
+    <light pos="3.5 0 5.0" dir="0 0 -1" directional="true" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+
+    <!-- Course Side Curbs / Guard Rails -->
+    <geom name="curb_left"  type="box" size="4.5 0.05 0.10" pos="3.5  1.3 0.10" material="curb_mat"/>
+    <geom name="curb_right" type="box" size="4.5 0.05 0.10" pos="3.5 -1.3 0.10" material="curb_mat"/>
+
+    <!-- Section 1: Slalom Obstacle Boxes & Barriers -->
+    <body name="obstacle_box_red" pos="{obs_x1} {obs_y1} 0.15">
+      <joint name="obs_red_joint" type="free" damping="0.8"/>
+      <geom name="geom_obs_red" type="box" size="0.15 0.15 0.15" material="hazard_red" mass="10.0"/>
+    </body>
+
+    <body name="obstacle_box_blue" pos="{obs_x2} {obs_y2} 0.18">
+      <joint name="obs_blue_joint" type="free" damping="0.8"/>
+      <geom name="geom_obs_blue" type="box" size="0.18 0.18 0.18" material="hazard_blue" mass="12.0"/>
+    </body>
+
+    <body name="obstacle_barrier_yellow" pos="{obs_x3} {obs_y3} 0.12">
+      <joint name="obs_barrier_joint" type="free" damping="0.8"/>
+      <geom name="geom_barrier" type="box" size="0.08 0.35 0.12" material="hazard_yellow" mass="15.0"/>
+    </body>
+
+    <!-- Section 2: Incline Ramp -> Elevated Deck Platform -> Decline Ramp -->
+    <body name="ramp_incline" pos="3.7 0 0.11" euler="0 -0.1813 0">
+      <geom name="geom_ramp_up" type="box" size="0.60 0.60 0.02" material="ramp_mat" friction="1.8 0.01 0.001"/>
+    </body>
+
+    <body name="ramp_deck" pos="4.9 0 0.11">
+      <geom name="geom_deck_surface" type="box" size="0.60 0.60 0.02" pos="0 0 0.11" material="platform_mat" friction="1.5 0.01 0.001"/>
+      <geom name="geom_deck_block"   type="box" size="0.60 0.60 0.10" pos="0 0 0"    material="platform_mat"/>
+    </body>
+
+    <body name="ramp_decline" pos="6.1 0 0.11" euler="0 0.1813 0">
+      <geom name="geom_ramp_down" type="box" size="0.60 0.60 0.02" material="ramp_mat" friction="1.8 0.01 0.001"/>
+    </body>
+
+    <!-- Section 3: Goal Waypoint Marker / Finish Pad -->
+    <body name="goal_beacon" pos="7.3 0 0.25">
+      <geom name="geom_goal" type="cylinder" size="0.30 0.03" material="goal_green"/>
+      <site name="goal_site" pos="0 0 0.2" size="0.06" rgba="0.1 0.9 0.3 1"/>
+    </body>
+
+    <!-- Overview & Chase Cameras -->
+    <camera name="course_overview" pos="3.8 -4.0 2.8" xyaxes="1 0 0 0 0.57 0.82" fovy="62"/>
+    <camera name="chase_cam" pos="-1.6 0 1.3" xyaxes="0 -1 0 0.45 0 0.89" fovy="65"/>
+  </worldbody>
+</mujoco>
+"""
+        with open(xml_path, "w", encoding="utf-8") as f:
+            f.write(course_xml)
 
         return xml_path, spawned_meta

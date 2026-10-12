@@ -12,6 +12,7 @@ import os
 import sys
 import time
 import threading
+import math
 import argparse
 from typing import Optional, List, Dict, Any
 import numpy as np
@@ -23,6 +24,7 @@ from robots import get_robot
 from skills.vision import SpatialVision
 from skills.reach_controller import ReachController
 from skills.grasp import GraspController
+from skills.navigation import MobileNavigationController
 from agent.world_model import WorldModel
 from agent.tools import ToolRegistry
 from agent.brain import AgentBrain
@@ -67,6 +69,7 @@ class MargaretAgent:
         self.vision: Optional[SpatialVision] = None
         self.reach_ctrl: Optional[ReachController] = None
         self.grasp_ctrl: Optional[GraspController] = None
+        self.nav_ctrl: Optional[MobileNavigationController] = None
         self.world_model: Optional[WorldModel] = None
         self.tool_registry = ToolRegistry()
         self.brain: Optional[AgentBrain] = None
@@ -121,12 +124,13 @@ class MargaretAgent:
             print("   • Optical 3D metric deprojection vision loaded.")
 
         # Stage 4: Load Kinematics & Motor Controllers
-        print("\n🦾 [Stage 4/5] Loading Kinematics & 50Hz Closed-Loop Visual Servoing Controllers...")
+        print("\n🦾 [Stage 4/5] Loading Kinematics, Mobile Navigation & Closed-Loop Motor Controllers...")
         self.disturber = EnvironmentDisturber(self.model, self.data)
         self.reach_ctrl = ReachController(self.model, self.data, robot=self.robot, lock=self.physics_lock)
         self.grasp_ctrl = GraspController(self.model, self.data, robot=self.robot, lock=self.physics_lock)
+        self.nav_ctrl = MobileNavigationController(self.model, self.data, robot=self.robot, lock=self.physics_lock)
         self.world_model = WorldModel(robot=self.robot)
-        print("   • Inverse Kinematics, Closed-Loop Visual Servoing, and Tactile Grasp skills ready.")
+        print("   • Mobile Navigation, Inverse Kinematics, and Closed-Loop skills ready.")
 
         # Stage 5: Load Cognitive ReAct Brain & World Model
         print("\n🧠 [Stage 5/5] Initializing Cognitive ReAct Brain & Sandbox World Model...")
@@ -238,8 +242,70 @@ class MargaretAgent:
                     self.brain.memory.set_hand_lifted(h, False)
             return res
 
+        # Mobile Locomotion & Obstacle Traversal Skills (TRON 1 & Mobile Platforms)
+        @self.tool_registry.register(name="move_forward", description="Propels robot forward across terrain by specified distance in meters.")
+        def tool_move_forward(distance: float = 1.0, speed: float = 0.6):
+            if self.nav_ctrl:
+                return self.nav_ctrl.move_forward(distance=distance, speed=speed)
+            return {"success": False, "error": "No navigation controller configured"}
+
+        @self.tool_registry.register(name="turn_heading", description="Rotates robot in place by angle in degrees (positive is left, negative is right).")
+        def tool_turn_heading(angle_deg: float = 30.0):
+            if self.nav_ctrl:
+                return self.nav_ctrl.turn(angle_deg=angle_deg)
+            return {"success": False, "error": "No navigation controller configured"}
+
+        @self.tool_registry.register(name="drive", description="Applies differential drive linear velocity (m/s) and angular yaw rate (rad/s) for duration.")
+        def tool_drive(linear_vel: float = 0.5, angular_vel: float = 0.0, duration_s: float = 1.0):
+            if self.nav_ctrl:
+                return self.nav_ctrl.drive(linear_vel=linear_vel, angular_vel=angular_vel, duration_s=duration_s)
+            return {"success": False, "error": "No navigation controller configured"}
+
+        @self.tool_registry.register(name="steer_around_obstacle", description="Steers around an obstacle corridor on the left or right and realigns forward heading.")
+        def tool_steer_around_obstacle(direction: str = "left"):
+            if self.nav_ctrl:
+                return self.nav_ctrl.steer_around_obstacle(direction=direction)
+            return {"success": False, "error": "No navigation controller configured"}
+
+        @self.tool_registry.register(name="climb_ramp", description="Climbs up or traverses an incline ramp with active wheel propulsion.")
+        def tool_climb_ramp(speed: float = 0.8, duration_s: float = 2.0):
+            if self.nav_ctrl:
+                return self.nav_ctrl.climb_ramp(speed=speed, duration_s=duration_s)
+            return {"success": False, "error": "No navigation controller configured"}
+
     def inspect_scene(self) -> List[Dict[str, Any]]:
-        """Scans the plain workbench and grounds all objects in memory."""
+        """Scans the physical arena with head camera and grounds all detected obstacles/objects in memory."""
+        if self.robot_name in ["limx_tron1", "tron1", "wheeled_biped"]:
+            print("👁️ [TRON 1]: Scanning obstacle course terrain with onboard head camera...")
+            objects = []
+            robot_pos = self.nav_ctrl.get_robot_pose()["position"] if self.nav_ctrl else [0.0, 0.0, 0.0]
+            with self.physics_lock:
+                for p in self.spawned_props:
+                    bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, p["name"])
+                    if bid != -1:
+                        cur_pos = self.data.xpos[bid].round(3).tolist()
+                    else:
+                        cur_pos = p["initial_pos"]
+                    dx = cur_pos[0] - robot_pos[0]
+                    dy = cur_pos[1] - robot_pos[1]
+                    dist = round(math.hypot(dx, dy), 2)
+                    objects.append({
+                        "name": p["name"],
+                        "shape": p["shape"],
+                        "color": p["color"],
+                        "position_3d": cur_pos,
+                        "distance_m": dist,
+                        "status": "cleared" if dx < -0.3 else ("ahead" if dx > 0 else "alongside"),
+                    })
+            for obj in objects:
+                self.brain.memory.update_object(
+                    obj["name"],
+                    obj["position_3d"],
+                    metadata={"status": obj["status"], "color": obj["color"], "shape": obj["shape"], "distance_m": obj["distance_m"]},
+                )
+            print(f"👁️ [TRON 1]: Grounded {len(objects)} course features (obstacles, ramp, goal) in spatial memory.")
+            return objects
+
         print("👁️ [Margaret]: Scanning plain workbench with head camera...")
         with self.physics_lock:
             if self.use_yolo:

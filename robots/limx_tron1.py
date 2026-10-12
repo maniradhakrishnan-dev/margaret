@@ -25,6 +25,10 @@ class Tron1Robot(BaseRobot):
 
     @property
     def model_path(self) -> str:
+        return os.path.abspath("models/menagerie/limx_tron1/obstacle_course.xml")
+
+    @property
+    def plain_scene_path(self) -> str:
         return os.path.abspath("models/menagerie/limx_tron1/scene.xml")
 
     @property

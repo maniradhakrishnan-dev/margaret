@@ -50,8 +50,8 @@ class LiveEmbodiedGraph:
         self.history = history
         self.world_model = world_model or WorldModel()
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model = model or os.getenv("GEMINI_MODEL", "gemini-robotics-er-2-preview")
-        self.fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-3.1-flash-lite")
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        self.fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.0-flash")
 
         # Current Graph State
         self.current_goal: str = ""
