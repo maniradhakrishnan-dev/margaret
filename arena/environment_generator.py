@@ -358,17 +358,20 @@ class ProceduralEnvironment:
 
     <!-- Section 2: Incline Ramp -> Elevated Deck Platform -> Decline Ramp -->
     <body name="ramp_incline" pos="3.7 0 0.11" euler="0 -0.1813 0">
-      <geom name="geom_ramp_up" type="box" size="0.60 0.60 0.02" material="ramp_mat" friction="1.8 0.01 0.001"/>
+      <geom name="geom_ramp_up" type="box" size="0.60 0.85 0.02" material="ramp_mat" friction="1.8 0.01 0.001"/>
     </body>
 
     <body name="ramp_deck" pos="4.9 0 0.11">
-      <geom name="geom_deck_surface" type="box" size="0.60 0.60 0.02" pos="0 0 0.11" material="platform_mat" friction="1.5 0.01 0.001"/>
-      <geom name="geom_deck_block"   type="box" size="0.60 0.60 0.10" pos="0 0 0"    material="platform_mat"/>
+      <geom name="geom_deck_surface" type="box" size="0.60 0.85 0.02" pos="0 0 0.11" material="platform_mat" friction="1.5 0.01 0.001"/>
+      <geom name="geom_deck_block"   type="box" size="0.60 0.85 0.10" pos="0 0 0"    material="platform_mat"/>
+      <geom name="deck_curb_left"    type="box" size="0.60 0.03 0.06" pos="0  0.84 0.15" material="curb_mat"/>
+      <geom name="deck_curb_right"   type="box" size="0.60 0.03 0.06" pos="0 -0.84 0.15" material="curb_mat"/>
     </body>
 
     <body name="ramp_decline" pos="6.1 0 0.11" euler="0 0.1813 0">
-      <geom name="geom_ramp_down" type="box" size="0.60 0.60 0.02" material="ramp_mat" friction="1.8 0.01 0.001"/>
+      <geom name="geom_ramp_down" type="box" size="0.60 0.85 0.02" material="ramp_mat" friction="1.8 0.01 0.001"/>
     </body>
+
 
     <!-- Section 3: Goal Waypoint Marker / Finish Pad -->
     <body name="goal_beacon" pos="7.3 0 0.25">

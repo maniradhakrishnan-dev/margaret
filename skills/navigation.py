@@ -72,20 +72,30 @@ class MobileNavigationController:
             timestep = max(0.0005, getattr(self.model.opt, "timestep", 0.002))
             steps = max(10, int(duration_s / timestep))
 
+        hold_heading = abs(angular_vel) < 1e-4
+        target_yaw = start_pose["yaw"] if hold_heading else 0.0
+
         for step in range(steps):
+            cmd_angular = angular_vel
+            if hold_heading:
+                curr_yaw = self.get_robot_pose()["yaw"]
+                diff = math.atan2(math.sin(target_yaw - curr_yaw), math.cos(target_yaw - curr_yaw))
+                cmd_angular = max(-0.8, min(0.8, 2.5 * diff))
+
             if self.lock:
                 with self.lock:
                     if hasattr(self.robot, "apply_balance_stabilization"):
                         self.robot.apply_balance_stabilization(self.model, self.data)
                     if hasattr(self.robot, "apply_wheel_velocities"):
-                        self.robot.apply_wheel_velocities(self.model, self.data, linear_vel, angular_vel)
+                        self.robot.apply_wheel_velocities(self.model, self.data, linear_vel, cmd_angular)
                     mujoco.mj_step(self.model, self.data)
             else:
                 if hasattr(self.robot, "apply_balance_stabilization"):
                     self.robot.apply_balance_stabilization(self.model, self.data)
                 if hasattr(self.robot, "apply_wheel_velocities"):
-                    self.robot.apply_wheel_velocities(self.model, self.data, linear_vel, angular_vel)
+                    self.robot.apply_wheel_velocities(self.model, self.data, linear_vel, cmd_angular)
                 mujoco.mj_step(self.model, self.data)
+
 
         # Decelerate / clear wheel control
         if self.lock:
@@ -130,31 +140,58 @@ class MobileNavigationController:
         direction = 1.0 if distance >= 0 else -1.0
         return self.drive(linear_vel=direction * abs(speed), angular_vel=0.0, duration_s=duration)
 
-    def turn(self, angle_deg: float, turn_rate_deg_s: float = 45.0) -> Dict[str, Any]:
-        """Turns the robot in place by angle_deg degrees. Positive is left, negative is right."""
-        angle_rad = math.radians(angle_deg)
-        duration = max(0.2, abs(angle_deg) / max(10.0, turn_rate_deg_s))
-        omega = math.radians(turn_rate_deg_s) * (1.0 if angle_deg >= 0 else -1.0)
-        return self.drive(linear_vel=0.0, angular_vel=omega, duration_s=duration)
+    def turn(self, angle_deg: float, turn_rate_deg_s: float = 45.0, tolerance_deg: float = 1.8) -> Dict[str, Any]:
+        """
+        Turns the robot in place by angle_deg degrees using closed-loop IMU yaw feedback.
+        Positive is left (CCW), negative is right (CW).
+        """
+        start_pose = self.get_robot_pose()
+        target_yaw = start_pose["yaw"] + math.radians(angle_deg)
+        target_yaw = math.atan2(math.sin(target_yaw), math.cos(target_yaw))
+
+        max_steps = max(20, int(abs(angle_deg) / 1.5) + 30)
+        for _ in range(max_steps):
+            curr_yaw = self.get_robot_pose()["yaw"]
+            diff = math.atan2(math.sin(target_yaw - curr_yaw), math.cos(target_yaw - curr_yaw))
+            if abs(math.degrees(diff)) <= tolerance_deg:
+                break
+            omega = max(-1.6, min(1.6, 3.2 * diff))
+            self.drive(linear_vel=0.0, angular_vel=omega, duration_s=0.04)
+
+        end_pose = self.get_robot_pose()
+        return {
+            "success": True,
+            "angle_commanded_deg": angle_deg,
+            "initial_heading_deg": round(start_pose["yaw_deg"], 1),
+            "final_heading_deg": round(end_pose["yaw_deg"], 1),
+            "heading_deg": round(end_pose["yaw_deg"], 1),
+        }
+
+    def realign_heading(self, target_heading_deg: float = 0.0) -> Dict[str, Any]:
+        """Aligns robot heading directly to target global angle (0.0 = forward down track)."""
+        current = self.get_robot_pose()
+        diff = target_heading_deg - current["yaw_deg"]
+        diff = (diff + 180.0) % 360.0 - 180.0
+        return self.turn(diff)
 
     def steer_around_obstacle(self, direction: str = "left", bypass_distance: float = 1.0) -> Dict[str, Any]:
         """
         Executes an S-curve maneuver to clear an obstacle ahead:
         1. Steer laterally toward open corridor (left or right)
         2. Drive past obstacle flank
-        3. Realign forward heading
+        3. Realign squarely forward along track heading (0.0 deg)
         """
         side_sign = 1.0 if direction.lower() == "left" else -1.0
         print(f"🔄 [TRON 1 Navigation]: Steering {direction.upper()} to bypass obstacle corridor...")
 
         # Turn into bypass lane
-        t1 = self.turn(side_sign * 25.0)
-        # Traverse past obstacle
-        t2 = self.move_forward(bypass_distance * 0.7)
-        # Straighten heading
-        t3 = self.turn(-side_sign * 25.0)
-        # Resume forward advance
-        t4 = self.move_forward(bypass_distance * 0.5)
+        self.turn(side_sign * 25.0)
+        # Traverse past obstacle flank
+        self.move_forward(bypass_distance * 0.7)
+        # Realign squarely forward down track
+        self.realign_heading(0.0)
+        # Resume forward advance along cleared corridor
+        self.move_forward(bypass_distance * 0.5)
 
         current = self.get_robot_pose()
         return {
@@ -164,8 +201,11 @@ class MobileNavigationController:
             "heading_deg": round(current["yaw_deg"], 1),
         }
 
-    def climb_ramp(self, speed: float = 0.8, duration_s: float = 2.0) -> Dict[str, Any]:
-        """Drives up or across an incline ramp with positive wheel propulsion."""
-        print(f"⛰️ [TRON 1 Terrain]: Climbing incline ramp at {speed} m/s...")
+    def climb_ramp(self, speed: float = 0.8, duration_s: float = 2.5) -> Dict[str, Any]:
+        """Drives up or across an incline ramp with active wheel propulsion."""
+        print(f"⛰️ [TRON 1 Terrain]: Realigning track heading and climbing incline ramp at {speed} m/s...")
+        # Ensure robot is squared up with the track before ascending ramp
+        self.realign_heading(0.0)
         return self.drive(linear_vel=speed, angular_vel=0.0, duration_s=duration_s)
+
 
